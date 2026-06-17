@@ -1,0 +1,92 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rule-engine-config
+  namespace: default
+  labels:
+    app: rule-engine
+data:
+  config.yaml: |
+    source:
+      broker: "tcp://localhost:1884"
+      username: ""
+      password: ""
+      client_id: "rule-engine"
+      qos: 0
+      topics:
+        - "sensors/batch"
+        - "sensors2/batch"
+        - "sensors3/batch"
+
+    http:
+      port: 9090
+
+    rules:
+      # 转发全量数据到云端 MQTT Broker（sensors）
+      - name: "forward-to-cloud"
+        enabled: true
+        source_topic: "sensors/batch"
+        type: "forward"
+        target:
+          type: "mqtt"
+          broker: "tcp://192.168.122.231:1884"
+          topic: "cloud/sensors/batch"
+          qos: 0
+
+      # 转发全量数据到云端 MQTT Broker（sensors2）
+      - name: "forward-to-cloud-2"
+        enabled: true
+        source_topic: "sensors2/batch"
+        type: "forward"
+        target:
+          type: "mqtt"
+          broker: "tcp://192.168.122.231:1884"
+          topic: "cloud/sensors2/batch"
+          qos: 0
+
+      # 转发全量数据到云端 MQTT Broker（sensors3）
+      - name: "forward-to-cloud-3"
+        enabled: true
+        source_topic: "sensors3/batch"
+        type: "forward"
+        target:
+          type: "mqtt"
+          broker: "tcp://192.168.122.231:1884"
+          topic: "cloud/sensors3/batch"
+          qos: 0
+
+      # 过滤高值告警（value > 900）并发布到告警主题
+      - name: "high-value-alert"
+        enabled: true
+        source_topic: "sensors/batch"
+        type: "filter"
+        filter:
+          field: "value"
+          operator: "gt"
+          threshold: "900"
+        target:
+          type: "mqtt"
+          broker: ""
+          topic: "alerts/high-value"
+          qos: 1
+
+      # 自定义 JS 脚本处理
+      - name: "custom-js-processing"
+        enabled: true
+        source_topic: "sensors/batch"
+        type: "script"
+        script: |
+          function process(messages) {
+            return messages.filter(function(m) { return m.value > 500; })
+              .map(function(m) {
+                return {
+                  name: m.name,
+                  value: Math.round(m.value * 100) / 100,
+                  timestamp: m.timestamp,
+                  alert: m.value > 800 ? "HIGH" : "MEDIUM"
+                };
+              });
+          }
+        target:
+          type: "mqtt"
+          topic: "processed/sensors"

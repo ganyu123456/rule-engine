@@ -1,0 +1,88 @@
+# ============================================================
+# rule-engine Helm Chart 默认配置
+# ============================================================
+
+# ── 镜像 ──────────────────────────────────────────────────
+image:
+  repository: harbor.zkjgy.online/library/rule-engine
+  tag: latest
+  pullPolicy: Always
+
+imagePullSecrets:
+  - name: harbor-secret
+
+# ── KubeEdge 边缘节点调度 ──────────────────────────────────
+nodeName: cloudedge-edge-01
+tolerations:
+  - key: node-role.kubernetes.io/edge
+    operator: Exists
+    effect: NoSchedule
+
+# hostNetwork 使规则引擎可直接访问节点物理 IP（访问本地 MQTT Broker）
+hostNetwork: true
+dnsPolicy: ClusterFirstWithHostNet
+
+# ── 管理 API 端口 ──────────────────────────────────────────
+httpPort: 9090
+service:
+  type: NodePort
+  nodePort: 30090
+
+# ── 资源限制 ──────────────────────────────────────────────
+resources:
+  requests:
+    cpu: 500m
+    memory: 1024Mi
+  limits:
+    cpu: 1000m
+    memory: 2048Mi
+
+# ── 日志级别 ───────────────────────────────────────────────
+logLevel: "2"
+
+# ── rule-engine config.yaml 内容（挂载到 /etc/rule-engine/config.yaml）─────
+engineConfig:
+  source:
+    broker: "tcp://localhost:1884"
+    username: ""
+    password: ""
+    client_id: "rule-engine"
+    qos: 0
+    topics:
+      - "sensors/batch"
+      - "sensors2/batch"
+      - "sensors3/batch"
+
+  http:
+    port: 9090
+
+  rules:
+    - name: "forward-to-cloud"
+      enabled: true
+      source_topic: "sensors/batch"
+      type: "forward"
+      target:
+        type: "mqtt"
+        broker: "tcp://192.168.122.231:1884"
+        topic: "cloud/sensors/batch"
+        qos: 0
+
+    - name: "forward-to-cloud-2"
+      enabled: true
+      source_topic: "sensors2/batch"
+      type: "forward"
+      target:
+        type: "mqtt"
+        broker: "tcp://192.168.122.231:1884"
+        topic: "cloud/sensors2/batch"
+        qos: 0
+
+    - name: "forward-to-cloud-3"
+      enabled: true
+      source_topic: "sensors3/batch"
+      type: "forward"
+      target:
+        type: "mqtt"
+        broker: "tcp://192.168.122.231:1884"
+        topic: "cloud/sensors3/batch"
+        qos: 0

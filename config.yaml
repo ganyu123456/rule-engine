@@ -1,0 +1,148 @@
+# ============================================================
+# rule-engine 配置示例1
+#
+# 架构说明：
+#   边缘设备/sensor-simulator → 边缘 MQTT Broker → rule-engine
+#   rule-engine 按规则过滤/变换/路由 → 云端 MQTT / 边缘其他 Broker / HTTP
+#
+# source 字段：订阅边缘节点本地 MQTT Broker
+# rules  字段：每条规则定义"从哪个 topic 接收"→"如何处理"→"发送到哪里"
+# http   字段：管理 API（GET /health, GET /api/rules, GET /api/rules/stats）
+# ============================================================
+
+source:
+  broker: "tcp://localhost:1883"   # 边缘节点本地 MQTT Broker
+  username: ""
+  password: ""
+  client_id: "rule-engine"
+  qos: 0
+  topics:
+    - "sensors/batch"
+    - "sensors2/batch"
+    - "sensors3/batch"
+
+http:
+  port: 9090   # 管理 API 监听端口
+
+rules:
+  # ── 规则1：直接转发（全量透传到云端 MQTT）──────────────────────
+  - name: "forward-to-cloud"
+    enabled: true
+    source_topic: "sensors/batch"
+    type: "forward"
+    target:
+      type: "mqtt"
+      broker: "tcp://192.168.122.231:1883"   # 云端 MQTT Broker
+      topic: "cloud/sensors/batch"
+      qos: 0
+
+  # ── 规则2：过滤（仅转发 value > 900 的告警数据）────────────────
+  - name: "high-value-alert"
+    enabled: true
+    source_topic: "sensors/batch"
+    type: "filter"
+    filter:
+      field: "value"
+      operator: "gt"       # 支持: gt | lt | gte | lte | eq | neq | contains
+      threshold: "900"
+    target:
+      type: "mqtt"
+      broker: ""           # 空 = 使用 source.broker（本地 Broker）
+      topic: "alerts/high-value"
+      qos: 1
+
+  # ── 规则3：字段变换（标准化字段名后转发）──────────────────────
+  - name: "transform-standard"
+    enabled: true
+    source_topic: "sensors/batch"
+    type: "transform"
+    transform:
+      operations:
+        - op: "rename"
+          from: "name"
+          to: "tag_name"
+        - op: "rename"
+          from: "value"
+          to: "tag_value"
+        - op: "add"
+          field: "source_node"
+          value: "edge-node-01"   # 注入来源节点标识
+        - op: "remove"
+          field: "value_state"
+    target:
+      type: "mqtt"
+      broker: "tcp://192.168.122.231:1883"
+      topic: "transformed/sensors"
+
+  # ── 规则4：自定义 JS 脚本（灵活处理逻辑）──────────────────────
+  # process(messages) 接收传感器数组，返回处理后的数组
+  # 返回空数组或 null 则丢弃该消息
+  - name: "custom-js-processing"
+    enabled: true
+    source_topic: "sensors2/batch"
+    type: "script"
+    script: |
+      function process(messages) {
+        // 只保留偶数编号的传感器，并标注告警级别
+        var result = [];
+        for (var i = 0; i < messages.length; i++) {
+          var m = messages[i];
+          var tagNum = parseInt(m.name.replace("db01.tag", ""));
+          if (tagNum % 2 !== 0) continue;
+
+          var level = "normal";
+          if (m.value > 800) level = "high";
+          else if (m.value > 500) level = "medium";
+
+          result.push({
+            name: m.name,
+            value: Math.round(m.value * 100) / 100,
+            timestamp: m.timestamp,
+            alert_level: level
+          });
+        }
+        log("processed " + result.length + " items");
+        return result;
+      }
+    target:
+      type: "mqtt"
+      topic: "processed/sensors2"
+
+  # ── 规则5：JS 脚本 + HTTP 目标（推送到第三方系统）─────────────
+  - name: "push-to-api"
+    enabled: false   # 默认关闭，按需开启
+    source_topic: "sensors/batch"
+    type: "script"
+    script: |
+      function process(messages) {
+        // 聚合：计算平均值后只发一条汇总消息
+        if (!messages || messages.length === 0) return null;
+        var sum = 0;
+        for (var i = 0; i < messages.length; i++) {
+          sum += messages[i].value;
+        }
+        return [{
+          count: messages.length,
+          avg_value: Math.round(sum / messages.length * 100) / 100,
+          timestamp: messages[0].timestamp
+        }];
+      }
+    target:
+      type: "http"
+      url: "http://data-sink-service/api/v1/sensors"
+      method: "POST"
+      headers:
+        Content-Type: "application/json"
+        Authorization: "Bearer your-token-here"
+      timeout_seconds: 10
+
+  # ── 规则6：外部 JS 文件（脚本文件挂载进容器）──────────────────
+  # 将 JS 文件放入 ConfigMap，挂载到 /etc/rule-engine/scripts/
+  - name: "custom-script-from-file"
+    enabled: false
+    source_topic: "sensors3/batch"
+    type: "script"
+    script_file: "/etc/rule-engine/scripts/my-custom-rule.js"
+    target:
+      type: "mqtt"
+      topic: "custom/sensors3"

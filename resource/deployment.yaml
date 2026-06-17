@@ -1,0 +1,101 @@
+# ============================================================
+# rule-engine Kubernetes 部署文件
+#
+# 架构说明：
+#   - 部署在边缘节点，订阅本地 MQTT Broker
+#   - 按规则过滤/变换后转发到云端 Broker / 本地其他 topic / HTTP 端点
+#   - 管理 API: http://<node-ip>:9090/health | /api/rules | /api/rules/stats
+#
+# 使用前需要修改（搜索 TODO）：
+#   1. nodeName  → 替换为实际边缘节点名（kubectl get nodes）
+#   2. 镜像地址  → 替换为 CI 构建后的实际镜像 tag
+#   3. ConfigMap → 按实际 Broker 地址和规则配置修改
+# ============================================================
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rule-engine
+  namespace: default
+  labels:
+    app: rule-engine
+    version: v1.0
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rule-engine
+  template:
+    metadata:
+      labels:
+        app: rule-engine
+        version: v1.0
+    spec:
+      nodeName: cloudedge-edge-01   # TODO: 替换为实际边缘节点名
+      tolerations:
+        - key: node-role.kubernetes.io/edge
+          operator: Exists
+          effect: NoSchedule
+      restartPolicy: Always
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        - name: rule-engine
+          image: harbor.zkjgy.online/library/rule-engine:latest   # TODO: 可指定具体版本
+          imagePullPolicy: Always
+          command: ["/app/rule-engine"]
+          args: ["--config-file=/etc/rule-engine/config.yaml", "--v=2"]
+          ports:
+            - name: http
+              containerPort: 9090
+              protocol: TCP
+          volumeMounts:
+            - name: rule-engine-config
+              mountPath: /etc/rule-engine
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 9090
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 9090
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1024Mi
+            limits:
+              cpu: 1000m
+              memory: 2048Mi
+      volumes:
+        - name: rule-engine-config
+          configMap:
+            name: rule-engine-config
+            items:
+              - key: config.yaml
+                path: config.yaml
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rule-engine-service
+  namespace: default
+  labels:
+    app: rule-engine
+spec:
+  type: NodePort
+  selector:
+    app: rule-engine
+  ports:
+    - name: http
+      protocol: TCP
+      port: 9090
+      targetPort: 9090
+      nodePort: 30090   # 通过 http://<edge-node-ip>:30090 访问管理API

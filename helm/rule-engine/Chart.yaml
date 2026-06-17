@@ -1,0 +1,13 @@
+apiVersion: v2
+name: rule-engine
+description: KubeEdge 边缘规则引擎，订阅边缘 MQTT Broker，按规则过滤/转换后转发到云端
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - iot
+  - kubeedge
+  - rule-engine
+  - mqtt
+maintainers:
+  - name: ganyu
