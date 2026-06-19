@@ -6,7 +6,7 @@
 image:
   repository: harbor.zkjgy.online/library/rule-engine
   tag: latest
-  pullPolicy: Always
+  pullPolicy: IfNotPresent
 
 imagePullSecrets:
   - name: harbor-secret
