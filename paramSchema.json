@@ -1,0 +1,260 @@
+[
+  {
+    "groupKey": "image",
+    "label": "镜像配置",
+    "icon": "🐳",
+    "description": "容器镜像地址、版本及拉取策略",
+    "fields": [
+      {
+        "key": "repository",
+        "label": "镜像仓库地址",
+        "type": "string",
+        "required": true,
+        "defaultValue": "harbor.zkjgy.online/library/rule-engine",
+        "yamlPath": "image.repository",
+        "placeholder": "如 harbor.zkjgy.online/library/rule-engine",
+        "span": 24
+      },
+      {
+        "key": "tag",
+        "label": "镜像版本",
+        "type": "string",
+        "defaultValue": "latest",
+        "yamlPath": "image.tag",
+        "placeholder": "如 latest、v1.0.0",
+        "span": 12
+      },
+      {
+        "key": "pullPolicy",
+        "label": "镜像拉取策略",
+        "type": "select",
+        "defaultValue": "IfNotPresent",
+        "yamlPath": "image.pullPolicy",
+        "description": "IfNotPresent：本地有则用本地；Always：每次都拉取最新；Never：仅使用本地镜像",
+        "options": [
+          { "label": "IfNotPresent - 本地有则用本地", "value": "IfNotPresent" },
+          { "label": "Always - 每次都拉取最新", "value": "Always" },
+          { "label": "Never - 仅使用本地镜像", "value": "Never" }
+        ],
+        "span": 12
+      }
+    ]
+  },
+  {
+    "groupKey": "scheduling",
+    "label": "边缘节点调度",
+    "icon": "🖥️",
+    "description": "KubeEdge 边缘节点的调度策略与网络模式",
+    "fields": [
+      {
+        "key": "hostNetwork",
+        "label": "使用主机网络",
+        "type": "boolean",
+        "defaultValue": true,
+        "yamlPath": "hostNetwork",
+        "description": "开启后容器可直接访问节点物理 IP 上的 MQTT Broker",
+        "span": 12
+      },
+      {
+        "key": "dnsPolicy",
+        "label": "DNS 策略",
+        "type": "select",
+        "defaultValue": "ClusterFirstWithHostNet",
+        "yamlPath": "dnsPolicy",
+        "description": "使用主机网络时推荐 ClusterFirstWithHostNet",
+        "options": [
+          { "label": "ClusterFirstWithHostNet", "value": "ClusterFirstWithHostNet" },
+          { "label": "ClusterFirst", "value": "ClusterFirst" },
+          { "label": "Default", "value": "Default" },
+          { "label": "None", "value": "None" }
+        ],
+        "span": 12
+      }
+    ]
+  },
+  {
+    "groupKey": "resources",
+    "label": "资源限制",
+    "icon": "💾",
+    "description": "容器 CPU 与内存的资源申请值及上限",
+    "fields": [
+      {
+        "key": "requestsCpu",
+        "label": "CPU 申请值",
+        "type": "string",
+        "defaultValue": "500m",
+        "yamlPath": "resources.requests.cpu",
+        "placeholder": "如 200m、500m、1",
+        "span": 12
+      },
+      {
+        "key": "requestsMemory",
+        "label": "内存申请值",
+        "type": "string",
+        "defaultValue": "1024Mi",
+        "yamlPath": "resources.requests.memory",
+        "placeholder": "如 512Mi、1Gi",
+        "span": 12
+      },
+      {
+        "key": "limitsCpu",
+        "label": "CPU 上限",
+        "type": "string",
+        "defaultValue": "1000m",
+        "yamlPath": "resources.limits.cpu",
+        "placeholder": "如 1000m、2",
+        "span": 12
+      },
+      {
+        "key": "limitsMemory",
+        "label": "内存上限",
+        "type": "string",
+        "defaultValue": "2048Mi",
+        "yamlPath": "resources.limits.memory",
+        "placeholder": "如 1Gi、2Gi",
+        "span": 12
+      }
+    ]
+  },
+  {
+    "groupKey": "httpService",
+    "label": "HTTP 服务",
+    "icon": "🌐",
+    "description": "规则引擎管理 API 端口与 Service 配置",
+    "fields": [
+      {
+        "key": "httpPort",
+        "label": "管理 API 端口",
+        "type": "number",
+        "defaultValue": 9090,
+        "yamlPath": "httpPort",
+        "min": 1,
+        "max": 65535,
+        "span": 12
+      },
+      {
+        "key": "serviceType",
+        "label": "Service 类型",
+        "type": "select",
+        "defaultValue": "NodePort",
+        "yamlPath": "service.type",
+        "options": [
+          { "label": "ClusterIP", "value": "ClusterIP" },
+          { "label": "NodePort", "value": "NodePort" },
+          { "label": "LoadBalancer", "value": "LoadBalancer" }
+        ],
+        "span": 12
+      },
+      {
+        "key": "nodePort",
+        "label": "NodePort 端口",
+        "type": "number",
+        "defaultValue": 30090,
+        "yamlPath": "service.nodePort",
+        "min": 30000,
+        "max": 32767,
+        "description": "仅在 Service 类型为 NodePort 时有效",
+        "span": 12
+      }
+    ]
+  },
+  {
+    "groupKey": "sourceMqtt",
+    "label": "源 MQTT 配置",
+    "icon": "📡",
+    "description": "规则引擎消费的源 MQTT Broker 连接参数",
+    "fields": [
+      {
+        "key": "logLevel",
+        "label": "日志级别",
+        "type": "select",
+        "defaultValue": "2",
+        "yamlPath": "logLevel",
+        "description": "2=Info，1=Debug，0=Trace",
+        "options": [
+          { "label": "0 - Trace（最详细）", "value": "0" },
+          { "label": "1 - Debug", "value": "1" },
+          { "label": "2 - Info（推荐）", "value": "2" }
+        ],
+        "span": 12
+      },
+      {
+        "key": "sourceBroker",
+        "label": "源 Broker 地址",
+        "type": "string",
+        "required": true,
+        "defaultValue": "tcp://localhost:1884",
+        "yamlPath": "engineConfig.source.broker",
+        "placeholder": "如 tcp://localhost:1884",
+        "span": 12
+      },
+      {
+        "key": "sourceClientId",
+        "label": "源客户端 ID",
+        "type": "string",
+        "defaultValue": "rule-engine",
+        "yamlPath": "engineConfig.source.client_id",
+        "span": 12
+      },
+      {
+        "key": "sourceUsername",
+        "label": "源 Broker 用户名",
+        "type": "string",
+        "defaultValue": "",
+        "yamlPath": "engineConfig.source.username",
+        "placeholder": "留空则不认证",
+        "span": 12
+      },
+      {
+        "key": "sourcePassword",
+        "label": "源 Broker 密码",
+        "type": "password",
+        "defaultValue": "",
+        "yamlPath": "engineConfig.source.password",
+        "placeholder": "留空则不认证",
+        "span": 12
+      },
+      {
+        "key": "sourceQos",
+        "label": "源端 QoS",
+        "type": "select",
+        "defaultValue": 0,
+        "yamlPath": "engineConfig.source.qos",
+        "options": [
+          { "label": "0 - 最多一次", "value": 0 },
+          { "label": "1 - 至少一次", "value": 1 },
+          { "label": "2 - 恰好一次", "value": 2 }
+        ],
+        "span": 12
+      },
+      {
+        "key": "httpPortConfig",
+        "label": "HTTP 端口（config 内）",
+        "type": "number",
+        "defaultValue": 9090,
+        "yamlPath": "engineConfig.http.port",
+        "min": 1,
+        "max": 65535,
+        "description": "需与上层 httpPort 保持一致",
+        "span": 12
+      }
+    ]
+  },
+  {
+    "groupKey": "rules",
+    "label": "转发规则",
+    "icon": "🔄",
+    "description": "MQTT 消息转发规则（源 Topic → 目标 Broker）",
+    "fields": [
+      {
+        "key": "sourceTopics",
+        "label": "订阅主题列表",
+        "type": "textarea",
+        "defaultValue": "- sensors/batch\n- sensors2/batch\n- sensors3/batch",
+        "yamlPath": "engineConfig.source.topics",
+        "description": "YAML 数组格式，每行一个 \"- topic名\"。注意：数组路径写入可能有兼容性问题，异常时请切换 YAML 模式",
+        "span": 24
+      }
+    ]
+  }
+]
