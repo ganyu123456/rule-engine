@@ -20,6 +20,8 @@ WORKDIR /app
 
 RUN apk add --no-cache ca-certificates tzdata curl
 
+ENV TZ=Asia/Shanghai
+
 COPY --from=builder /build/rule-engine .
 
 ENV CONFIG_FILE=/etc/rule-engine/config.yaml
